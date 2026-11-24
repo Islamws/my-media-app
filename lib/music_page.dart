@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'now_playing_page.dart';
 
 final AudioPlayer player = AudioPlayer();
 
@@ -243,6 +244,12 @@ class MiniPlayer extends StatelessWidget {
               ),
               ListTile(
                 dense: true,
+                                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const NowPlayingPage(),
+                    fullscreenDialog: true,
+                  ),
+                ),
                 leading: const Icon(Icons.music_note),
                 title: Text(
                   tag.title,
