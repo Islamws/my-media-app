@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio_background/just_audio_background.dart';
+import 'music_page.dart';
 
-void main() => runApp(const AllInOneApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.islamws.all_in_one.audio',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
+  runApp(const AllInOneApp());
+}
 
 class AllInOneApp extends StatelessWidget {
   const AllInOneApp({super.key});
@@ -32,6 +42,13 @@ class _HomeShellState extends State<HomeShell> {
 
   static const _titles = ['Music', 'Video', 'Photos', 'YouTube Music'];
 
+  Widget _soon(String name) => Center(
+        child: Text(
+          '$name - coming soon',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,22 +66,31 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: Center(
-        child: Text(
-          '${_titles[_index]} - coming soon',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+      body: IndexedStack(
+        index: _index,
+        children: [
+          MusicPage(isActive: _index == 0),
+          _soon('Video'),
+          _soon('Photos'),
+          _soon('YouTube Music'),
+        ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.music_note), label: 'Music'),
-          NavigationDestination(icon: Icon(Icons.movie), label: 'Video'),
-          NavigationDestination(icon: Icon(Icons.photo), label: 'Photos'),
-          NavigationDestination(icon: Icon(Icons.play_circle), label: 'YT Music'),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const MiniPlayer(),
+          NavigationBar(
+            selectedIndex: _index,
+            onDestinationSelected: (i) => setState(() => _index = i),
+            destinations: const [
+              NavigationDestination(icon: Icon(Icons.music_note), label: 'Music'),
+              NavigationDestination(icon: Icon(Icons.movie), label: 'Video'),
+              NavigationDestination(icon: Icon(Icons.photo), label: 'Photos'),
+              NavigationDestination(icon: Icon(Icons.play_circle), label: 'YT Music'),
+            ],
+          ),
         ],
       ),
     );
   }
-}
+} 
