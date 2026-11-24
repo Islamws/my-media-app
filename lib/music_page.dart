@@ -1,29 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'folders_page.dart';
+import 'library.dart';
 import 'now_playing_page.dart';
 
-final AudioPlayer player = AudioPlayer();
-
-const _audioExts = {'.mp3', '.m4a', '.aac', '.flac', '.wav', '.ogg', '.opus', '.wma'};
-
-bool isAudio(String path) {
-  final i = path.lastIndexOf('.');
-  return i != -1 && _audioExts.contains(path.substring(i).toLowerCase());
-}
-
-String baseName(String path) {
-  final parts = path.split('/').where((e) => e.isNotEmpty).toList();
-  return parts.isEmpty ? '' : parts.last;
-}
-
-String titleOf(String path) {
-  final name = baseName(path);
-  final i = name.lastIndexOf('.');
-  return i > 0 ? name.substring(0, i) : name;
-}
+enum SortMode { title, artist, newest, longest }
 
 class MusicPage extends StatefulWidget {
   final bool isActive;
@@ -33,25 +16,27 @@ class MusicPage extends StatefulWidget {
   State<MusicPage> createState() => _MusicPageState();
 }
 
-class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
-  static const root = '/storage/emulated/0';
-  Directory current = Directory(root);
-  List<FileSystemEntity> items = [];
+class _MusicPageState extends State<MusicPage>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 2, vsync: this);
   bool granted = false;
-  String? error;
-
-  bool get atRoot => current.path == root;
+  String query = '';
+  SortMode sort = SortMode.title;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _tabs.addListener(() {
+      if (mounted) setState(() {});
+    });
     _init();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _tabs.dispose();
     super.dispose();
   }
 
@@ -61,6 +46,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
   }
 
   Future<void> _init() async {
+    await musicLibrary.load();
     await Permission.notification.request();
     await _checkAccess();
   }
@@ -69,7 +55,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
     final ok = await Permission.manageExternalStorage.isGranted;
     if (!mounted) return;
     setState(() => granted = ok);
-    if (ok) _load();
+    if (ok) musicLibrary.scan();
   }
 
   Future<void> _askAccess() async {
@@ -77,64 +63,97 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
     _checkAccess();
   }
 
-  Future<void> _load() async {
-    try {
-      final list = await current.list().toList();
-      final visible =
-          list.where((e) => !baseName(e.path).startsWith('.')).toList();
-      visible.sort((a, b) {
-        final ad = a is Directory;
-        final bd = b is Directory;
-        if (ad != bd) return ad ? -1 : 1;
-        return baseName(a.path)
-            .toLowerCase()
-            .compareTo(baseName(b.path).toLowerCase());
-      });
-      if (!mounted) return;
-      setState(() {
-        items = visible;
-        error = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        items = [];
-        error = 'Cannot open this folder';
-      });
+  int _compare(Track a, Track b) {
+    switch (sort) {
+      case SortMode.title:
+        return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      case SortMode.artist:
+        final c = a.artist.toLowerCase().compareTo(b.artist.toLowerCase());
+        return c != 0
+            ? c
+            : a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      case SortMode.newest:
+        return b.modified.compareTo(a.modified);
+      case SortMode.longest:
+        return b.durationMs.compareTo(a.durationMs);
     }
   }
 
-  void _open(Directory d) {
-    setState(() => current = d);
-    _load();
+  Widget _songs() {
+    return ListenableBuilder(
+      listenable: musicLibrary,
+      builder: (context, _) {
+        final list = musicLibrary.tracks
+            .where((t) =>
+                query.isEmpty ||
+                t.title.toLowerCase().contains(query) ||
+                t.artist.toLowerCase().contains(query) ||
+                t.album.toLowerCase().contains(query))
+            .toList();
+        list.sort(_compare);
+        if (list.isEmpty) {
+          return Center(
+            child: Text(
+              musicLibrary.scanning
+                  ? 'Scanning...'
+                  : musicLibrary.tracks.isEmpty
+                      ? 'No songs found'
+                      : 'No results',
+            ),
+          );
+        }
+        return ListView.builder(
+          itemCount: list.length,
+          itemExtent: 64,
+          itemBuilder: (context, i) {
+            final t = list[i];
+            final sub = [t.artist, t.album].where((s) => s.isNotEmpty).join(' • ');
+            return ListTile(
+              dense: true,
+              leading: Cover(path: t.cover),
+              title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(
+                sub.isEmpty ? baseName(t.path) : sub,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Text(
+                fmtDuration(t.durationMs),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              onTap: () => playQueue(list, i),
+            );
+          },
+        );
+      },
+    );
   }
 
-  void _up() {
-    setState(() => current = current.parent);
-    _load();
-  }
-
-  Future<void> _play(File f) async {
-    final files = items
-        .whereType<File>()
-        .where((x) => isAudio(x.path))
-        .toList();
-    final idx = files.indexWhere((x) => x.path == f.path);
-    final source = ConcatenatingAudioSource(children: [
-      for (final x in files)
-        AudioSource.file(
-          x.path,
-          tag: MediaItem(id: x.path, title: titleOf(x.path)),
-        ),
-    ]);
-    try {
-      await player.setAudioSource(source, initialIndex: idx);
-      player.play();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Cannot play: $e')));
-    }
+  Widget _scanBanner() {
+    return ListenableBuilder(
+      listenable: musicLibrary,
+      builder: (context, _) {
+        if (!musicLibrary.scanning) return const SizedBox.shrink();
+        return ValueListenableBuilder<int>(
+          valueListenable: musicLibrary.scanned,
+          builder: (context, n, _) {
+            final total = musicLibrary.total;
+            return Column(
+              children: [
+                LinearProgressIndicator(value: total > 0 ? n / total : null),
+                Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Text(
+                    total > 0 ? 'Scanning $n / $total' : 'Looking for songs...',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -149,7 +168,7 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
               const Icon(Icons.folder_open, size: 64),
               const SizedBox(height: 16),
               const Text(
-                'To browse your files, allow access to all files.',
+                'To find your music, allow access to all files.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -163,55 +182,62 @@ class _MusicPageState extends State<MusicPage> with WidgetsBindingObserver {
       );
     }
 
-    return PopScope(
-      canPop: atRoot || !widget.isActive,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _up();
-      },
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            child: Text(
-              current.path,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  onChanged: (v) =>
+                      setState(() => query = v.trim().toLowerCase()),
+                  decoration: InputDecoration(
+                    hintText: 'Search songs',
+                    prefixIcon: const Icon(Icons.search),
+                    isDense: true,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              PopupMenuButton<SortMode>(
+                icon: const Icon(Icons.sort),
+                tooltip: 'Sort',
+                onSelected: (m) => setState(() => sort = m),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: SortMode.title, child: Text('Title')),
+                  PopupMenuItem(value: SortMode.artist, child: Text('Artist')),
+                  PopupMenuItem(value: SortMode.newest, child: Text('Newest')),
+                  PopupMenuItem(value: SortMode.longest, child: Text('Longest')),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Rescan',
+                onPressed: musicLibrary.scan,
+              ),
+            ],
           ),
-          Expanded(
-            child: error != null
-                ? Center(child: Text(error!))
-                : items.isEmpty
-                    ? const Center(child: Text('Empty folder'))
-                    : ListView.builder(
-                        itemCount: items.length,
-                        itemBuilder: (context, i) {
-                          final e = items[i];
-                          final name = baseName(e.path);
-                          if (e is Directory) {
-                            return ListTile(
-                              leading: const Icon(Icons.folder),
-                              title: Text(name),
-                              onTap: () => _open(e),
-                            );
-                          }
-                          final audio = isAudio(e.path);
-                          return ListTile(
-                            leading: Icon(
-                              audio ? Icons.music_note : Icons.insert_drive_file,
-                            ),
-                            title: Text(name),
-                            enabled: audio,
-                            onTap: audio ? () => _play(e as File) : null,
-                          );
-                        },
-                      ),
+        ),
+        TabBar(
+          controller: _tabs,
+          tabs: const [Tab(text: 'Songs'), Tab(text: 'Folders')],
+        ),
+        _scanBanner(),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _songs(),
+              FolderBrowser(active: widget.isActive && _tabs.index == 1),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -244,18 +270,25 @@ class MiniPlayer extends StatelessWidget {
               ),
               ListTile(
                 dense: true,
-                                onTap: () => Navigator.of(context).push(
+                onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const NowPlayingPage(),
                     fullscreenDialog: true,
                   ),
                 ),
-                leading: const Icon(Icons.music_note),
+                leading: Cover(path: tag.artUri?.toFilePath(), size: 40),
                 title: Text(
                   tag.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                subtitle: tag.artist == null
+                    ? null
+                    : Text(
+                        tag.artist!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
