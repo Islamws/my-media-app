@@ -8,7 +8,6 @@ String _fmt(Duration d) =>
 
 class NowPlayingPage extends StatelessWidget {
     const NowPlayingPage({super.key}); 
-  const NowPlayingPage({super.key, required this.player}); 
 
   @override
   Widget build(BuildContext context) {
