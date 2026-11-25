@@ -7,7 +7,7 @@ String _fmt(Duration d) =>
     '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 
 class NowPlayingPage extends StatelessWidget {
-  final AudioPlayer player;
+    const NowPlayingPage({super.key}); 
   const NowPlayingPage({super.key, required this.player}); 
 
   @override
