@@ -6,6 +6,7 @@ import 'video_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.islamws.all_in_one.audio',
     androidNotificationChannelName: 'Audio playback',
@@ -72,7 +73,7 @@ class _HomeShellState extends State<HomeShell> {
         index: _index,
         children: [
           MusicPage(isActive: _index == 0),
-          _soon('Video'),
+          _VideoPage(isActive: _index == 1), 
           _soon('Photos'),
           _soon('YouTube Music'),
         ],
