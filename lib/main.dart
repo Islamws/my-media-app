@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'music_page.dart';
+import 'package:media_kit/media_kit.dart';
+import 'video_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
