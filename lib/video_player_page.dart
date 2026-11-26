@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit_video/media_kit_video.dart';
 import 'library.dart' show player, baseName, titleOf;
+import 'resume_store.dart';
 
 String _fmt(Duration d) {
   final h = d.inHours;
