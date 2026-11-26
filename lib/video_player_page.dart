@@ -123,6 +123,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   void dispose() {
     _hideTimer?.cancel();
     _toastTimer?.cancel();
+        _saveTimer?.cancel();
+    _savePosition();
     for (final s in _subs) {
       s.cancel();
     }
