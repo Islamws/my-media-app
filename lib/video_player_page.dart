@@ -63,7 +63,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       if (mounted && p.index != _index) setState(() => _index = p.index);
     }));
     _subs.add(_vp.stream.error.listen((e) {
-      if (mounted) _flash('Error: $e');
+          _subs.add(_vp.stream.error.listen((e) {
+      if (mounted) setState(() => _error = '$e');
+    }));
     }));
     _vp.open(mk.Playlist(
       [for (final p in widget.paths) mk.Media(p)],
