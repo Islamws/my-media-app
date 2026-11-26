@@ -300,6 +300,18 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                     ),
                   ),
                 ),
+                            if (_error != null)
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(12),
+                    color: Colors.black87,
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
               if (_showControls)
                 _locked ? _lockOverlay() : _controlsOverlay(),
             ],
