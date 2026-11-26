@@ -133,7 +133,34 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
+  void _onItemChanged() {
+    _ready = false;
+    _applied = false;
+    _pendingResume = ResumeStore.get(widget.paths[_index]);
+    Future.delayed(const Duration(milliseconds: 800), _tryApplyResume);
+  }
 
+  void _tryApplyResume() {
+    if (!mounted || _applied) return;
+    final dur = _vp.state.duration;
+    if (dur <= Duration.zero) return;
+    _applied = true;
+    final saved = _pendingResume;
+    _pendingResume = null;
+    if (saved != null && saved < dur.inMilliseconds - 10000) {
+      _vp.seek(Duration(milliseconds: saved));
+      _flash('Resumed at ${_fmt(Duration(milliseconds: saved))}');
+      Future.delayed(const Duration(milliseconds: 1500), () => _ready = true);
+    } else {
+      _ready = true;
+    }
+  }
+
+  void _savePosition() {
+    if (!_ready || _index >= widget.paths.length) return;
+    ResumeStore.put(
+        widget.paths[_index], _vp.state.position, _vp.state.duration);
+  }
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 4), () {
