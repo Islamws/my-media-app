@@ -30,7 +30,8 @@ class VideoPlayerPage extends StatefulWidget {
 
 class _VideoPlayerPageState extends State<VideoPlayerPage> {
   final mk.Player _vp = mk.Player();
-  late final VideoController _controller = VideoController(_vp);
+    late final VideoController _controller;
+  String? _error;
   final List<StreamSubscription> _subs = [];
 
   int _index = 0;
