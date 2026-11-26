@@ -54,6 +54,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   void initState() {
     super.initState();
     _index = widget.index;
+        _controller = VideoController(_vp);
     player.pause(); // stop the music player
     SystemChrome.setPreferredOrientations(
         [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
