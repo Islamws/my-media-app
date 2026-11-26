@@ -62,10 +62,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     _subs.add(_vp.stream.playlist.listen((p) {
       if (mounted && p.index != _index) setState(() => _index = p.index);
     }));
-    _subs.add(_vp.stream.error.listen((e) {
-          _subs.add(_vp.stream.error.listen((e) {
+        _subs.add(_vp.stream.error.listen((e) {
       if (mounted) setState(() => _error = '$e');
-    }));
     }));
     _vp.open(mk.Playlist(
       [for (final p in widget.paths) mk.Media(p)],
