@@ -49,6 +49,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   double _dragDx = 0;
   Duration? _dragTarget;
   bool _vertRight = false;
+    double _prevRate = 1.0;
 
   @override
   void initState() {
