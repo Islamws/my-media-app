@@ -65,10 +65,17 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         _subs.add(_vp.stream.error.listen((e) {
       if (mounted) setState(() => _error = '$e');
     }));
-    _vp.open(mk.Playlist(
-      [for (final p in widget.paths) mk.Media(p)],
-      index: widget.index,
-    ));
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _vp.open(
+        mk.Playlist(
+          [for (final p in widget.paths) mk.Media(p)],
+          index: widget.index,
+        ),
+        play: true,
+      );
+      _vp.play();
+    }); 
     _scheduleHide();
   }
 
