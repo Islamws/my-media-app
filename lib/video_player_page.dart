@@ -478,6 +478,17 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                                          StreamBuilder<double>(
+                        stream: _vp.stream.rate,
+                        initialData: _vp.state.rate,
+                        builder: (context, s) => TextButton(
+                          onPressed: _pickSpeed,
+                          child: Text(
+                            '${s.data ?? 1.0}x',
+                            style: const TextStyle(color: white),
+                          ),
+                        ),
+                      ),
                     IconButton(
                       iconSize: 32,
                       icon: const Icon(Icons.skip_previous, color: white),
