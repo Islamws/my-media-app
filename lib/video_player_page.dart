@@ -235,6 +235,20 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _toggleControls,
+                                    onLongPressStart: _locked
+                      ? null
+                      : (_) {
+                          _prevRate = _vp.state.rate;
+                          _vp.setRate(2.0);
+                          _toastTimer?.cancel();
+                          setState(() => _toast = '2x');
+                        },
+                  onLongPressEnd: _locked
+                      ? null
+                      : (_) {
+                          _vp.setRate(_prevRate);
+                          setState(() => _toast = null);
+                        },
                   onDoubleTapDown: (d) => _tapX = d.localPosition.dx,
                   onDoubleTap: _locked
                       ? null
