@@ -73,7 +73,7 @@ class _HomeShellState extends State<HomeShell> {
         index: _index,
         children: [
           MusicPage(isActive: _index == 0),
-          _VideoPage(isActive: _index == 1), 
+          VideoPage(isActive: _index == 1), 
           _soon('Photos'),
           _soon('YouTube Music'),
         ],
