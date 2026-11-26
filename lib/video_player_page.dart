@@ -56,8 +56,42 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool _applied = false;
   int? _pendingResume;
 
-  @override
+    @override
   void initState() {
+    super.initState();
+    _index = widget.index;
+    _controller = VideoController(_vp);
+    player.pause(); // stop the music player
+    SystemChrome.setPreferredOrientations(
+        [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    _subs.add(_vp.stream.playlist.listen((p) {
+      if (!mounted || p.index == _index) return;
+      setState(() => _index = p.index);
+      _onItemChanged();
+    }));
+    _subs.add(_vp.stream.duration.listen((_) => _tryApplyResume()));
+    _subs.add(_vp.stream.error.listen((e) {
+      if (mounted) setState(() => _error = '$e');
+    }));
+    _saveTimer =
+        Timer.periodic(const Duration(seconds: 3), (_) => _savePosition());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await ResumeStore.load();
+      if (!mounted) return;
+      _onItemChanged();
+      await _vp.open(
+        mk.Playlist(
+          [for (final p in widget.paths) mk.Media(p)],
+          index: widget.index,
+        ),
+        play: true,
+      );
+      _vp.play();
+    });
+    _scheduleHide();
+  } 
     super.initState();
     _index = widget.index;
         _controller = VideoController(_vp);
