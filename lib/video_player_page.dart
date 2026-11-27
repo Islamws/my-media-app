@@ -92,32 +92,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     });
     _scheduleHide();
   } 
-    super.initState();
-    _index = widget.index;
-        _controller = VideoController(_vp);
-    player.pause(); // stop the music player
-    SystemChrome.setPreferredOrientations(
-        [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _subs.add(_vp.stream.playlist.listen((p) {
-      if (mounted && p.index != _index) setState(() => _index = p.index);
-    }));
-        _subs.add(_vp.stream.error.listen((e) {
-      if (mounted) setState(() => _error = '$e');
-    }));
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await _vp.open(
-        mk.Playlist(
-          [for (final p in widget.paths) mk.Media(p)],
-          index: widget.index,
-        ),
-        play: true,
-      );
-      _vp.play();
-    }); 
-    _scheduleHide();
-  }
 
   @override
   void dispose() {
