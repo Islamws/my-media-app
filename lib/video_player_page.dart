@@ -114,7 +114,35 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     Future.delayed(const Duration(milliseconds: 800), _tryApplyResume);
   }
 
-  void _tryApplyResume() {
+    void _tryApplyResume() {
+    if (!mounted || _applied) return;
+    final dur = _vp.state.duration;
+    if (dur <= Duration.zero) return;
+    _applied = true;
+    final saved = _pendingResume;
+    _pendingResume = null;
+    if (saved != null && saved < dur.inMilliseconds - 10000) {
+      _seekWithRetry(saved);
+    } else {
+      _ready = true;
+    }
+  }
+
+  Future<void> _seekWithRetry(int savedMs) async {
+    final idx = _index;
+    for (var i = 0; i < 8; i++) {
+      if (!mounted || _index != idx) return;
+      await _vp.seek(Duration(milliseconds: savedMs));
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (!mounted || _index != idx) return;
+      final cur = _vp.state.position.inMilliseconds;
+      if ((cur - savedMs).abs() < 5000) {
+        _flash('Resumed at ${_fmt(Duration(milliseconds: savedMs))}');
+        _ready = true;
+        return;
+      }
+    }
+  }
     if (!mounted || _applied) return;
     final dur = _vp.state.duration;
     if (dur <= Duration.zero) return;
